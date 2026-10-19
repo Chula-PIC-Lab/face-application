@@ -6,6 +6,9 @@ An advanced Emotion Tracking Monitor & Evaluation Dashboard built with **Streaml
 ### 🎯 Purpose
 This application is designed to continuously monitor and evaluate human emotions and feelings during various tasks or work sessions. It captures video feeds, detects faces, predicts emotions in real-time, visualizes probability streams over customizable time windows (1, 5, or 10 minutes), and logs session metrics for analysis.
 
+### Reference
+[https://github.com/kaiegg/EfficientFace](https://github.com/kaiegg/EfficientFace)
+
 ---
 
 ## 📋 Prerequisites & System Requirements
@@ -32,6 +35,7 @@ To ensure full compatibility with **MediaPipe (`0.10.21`)** and other core libra
     ```pip install -r requirements.txt```
 
 ## 🚀 Running the Application
-    ```streamlit run app.py```
+    ```
+    streamlit run app.py
 
 Open the local URL provided in your terminal (usually http://localhost:8501) in your web browser to start using the application.
