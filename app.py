@@ -11,13 +11,12 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 from PIL import Image
-from sklearn.metrics import accuracy_score, f1_score
 
 # ---------------------------------------------------------
 # Page Configuration
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="Emotion Tracking Monitor & Evaluation",
+    page_title="Assignment 3: Face Application",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -37,7 +36,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 1. EMOTIONS and PALETTE following EfficientFace
+# EMOTIONS and PALETTE following EfficientFace
 EMOTIONS = ['0_Neutral', '1_Hapiness', '2_Sadness', '3_Surprise', '4_Fear', '5_Disgust', '6_Anger']
 PALETTE = {
     "0_Neutral": "#64748b",
@@ -49,7 +48,6 @@ PALETTE = {
     "6_Anger": "#ef4444",
 }
 
-# Helper ฟังก์ชันแปลง Hex Color code ให้เป็น BGR Tuple สำหรับ OpenCV
 def hex_to_bgr(hex_str):
     hex_str = hex_str.lstrip('#')
     r, g, b = tuple(int(hex_str[i:i+2], 16) for i in (0, 2, 4))
@@ -78,7 +76,7 @@ def load_onnx_model():
 def load_face_detector():
     mp_face_detection = mp.solutions.face_detection
     detector = mp_face_detection.FaceDetection(
-        model_selection=0,  # 0 for short-range webcams (<2m)
+        model_selection=0,
         min_detection_confidence=0.5,
     )
     return detector
@@ -171,143 +169,112 @@ with st.sidebar:
 # ---------------------------------------------------------
 # Main Page Layout
 # ---------------------------------------------------------
-st.title("Emotion Analytics & Model Evaluation Dashboard")
+st.title("Face Application Analytics Dashboard")
 
 status_placeholder = st.empty()
-col_cam, col_graph = st.columns([1.1, 1.4], gap="medium")
+col_cam, col_graph = st.columns([1.0, 1.4], gap="medium")
 
 with col_cam:
-    st.subheader("Camera View")
     cam_placeholder = st.empty()
 
 with col_graph:
-    # เพิ่ม UI ตัวเลือกช่วงเวลากราฟ 3 ระดับ (1 นาที, 5 นาที, 10 นาที) ตามที่ต้องการ
-    col_g_title, col_g_select = st.columns([1.2, 1.0])
-    with col_g_title:
-        st.subheader("Probability Stream")
-    with col_g_select:
-        graph_time_window = st.selectbox(
-            "Graph Time Window",
-            options=[1, 5, 10],
-            format_func=lambda x: f"Last {x} Minute{'s' if x > 1 else ''}",
-            index=2, # ค่าเริ่มต้น 10 นาที
-            label_visibility="collapsed"
-        )
-    
-    chart_placeholder = st.empty()
-    dominant_summary_placeholder = st.empty()
+    chart_1m_placeholder = st.empty()
+    chart_5m_placeholder = st.empty()
+    chart_10m_placeholder = st.empty()
 
-st.divider()
-
-st.subheader("📊 Model Performance Evaluation")
-metrics_placeholder = st.empty()
-
-st.divider()
 st.subheader("Session Log & Report")
 table_placeholder = st.empty()
 download_placeholder = st.empty()
 
 # ---------------------------------------------------------
-# Render Analytics & Metrics Visuals
+# Render Analytics Visuals
 # ---------------------------------------------------------
+def create_window_figure(df, minutes, show_legend=False):
+    window_seconds = minutes * 60.0
+    max_elapsed = df["Elapsed (s)"].max()
+    min_x = max(0.0, max_elapsed - window_seconds)
+    max_x = max(window_seconds, max_elapsed)
+
+    fig = px.line(
+        df,
+        x="Elapsed (s)",
+        y=EMOTIONS,
+        color_discrete_map=PALETTE,
+        labels={"value": "Probability (%)", "variable": "Emotion", "Elapsed (s)": "Time (s)"},
+        range_y=[0, 105],
+        range_x=[min_x, max_x],
+        template="plotly_white",
+        title=f"Last {minutes} Minute{'s' if minutes > 1 else ''}"
+    )
+    
+    layout_args = dict(
+        paper_bgcolor="#ffffff",
+        plot_bgcolor="#f8fafc",
+        margin=dict(l=15, r=15, t=35, b=15),
+        height=240,
+        font=dict(color="#334155"),
+        xaxis=dict(gridcolor="#e2e8f0"),
+        yaxis=dict(gridcolor="#e2e8f0"),
+        showlegend=show_legend
+    )
+    
+    if show_legend:
+        layout_args["legend"] = dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-0.45,
+            xanchor="center",
+            x=0.5,
+            bgcolor="rgba(255,255,255,0.8)",
+        )
+
+    fig.update_layout(**layout_args)
+    return fig
+
+
 def render_dashboard_visuals(force_plot=False):
     df = pd.DataFrame(st.session_state.records)
 
     if not df.empty:
-        y_true = df["Ground Truth"].tolist()
-        y_pred = df["Dominant Emotion"].tolist()
-        
-        acc = accuracy_score(y_true, y_pred)
-        f1_macro = f1_score(y_true, y_pred, average="macro", zero_division=0)
-        f1_weighted = f1_score(y_true, y_pred, average="weighted", zero_division=0)
-
-        with metrics_placeholder.container():
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("Total Samples", len(df))
-            m2.metric("Accuracy", f"{acc * 100:.2f}%")
-            m3.metric("F1-Score (Macro)", f"{f1_macro:.4f}")
-            m4.metric("F1-Score (Weighted)", f"{f1_weighted:.4f}")
-
-        # คำนวณช่วงเวลาตามที่ผู้ใช้เลือกใน Graph Time Window (1 นาที, 5 นาที, 10 นาที)
-        window_seconds = graph_time_window * 60.0
-        max_elapsed = df["Elapsed (s)"].max()
-        min_x = max(0.0, max_elapsed - window_seconds)
-        max_x = max(window_seconds, max_elapsed)
-
-        df_filtered = df[df["Elapsed (s)"] >= min_x]
-        if not df_filtered.empty:
-            top_emotion = df_filtered["Dominant Emotion"].mode()
-            top_emo_text = top_emotion[0] if not top_emotion.empty else "N/A"
-            dominant_summary_placeholder.markdown(
-                f"💡 **Last {graph_time_window} Minutes** Emotion that occurs most frequently: **`{top_emo_text}`**"
-            )
-
         current_t = time.time()
         if force_plot or (current_t - st.session_state.get("last_plot_time", 0.0) >= 1.0):
-            fig = px.line(
-                df,
-                x="Elapsed (s)",
-                y=EMOTIONS,
-                color_discrete_map=PALETTE,
-                labels={"value": "Probability (%)", "variable": "Emotion", "Elapsed (s)": "Elapsed Time (s)"},
-                range_y=[0, 105],
-                range_x=[min_x, max_x],
-                template="plotly_white",
-            )
-            fig.update_layout(
-                paper_bgcolor="#ffffff",
-                plot_bgcolor="#f8fafc",
-                margin=dict(l=15, r=15, t=25, b=15),
-                height=340,
-                font=dict(color="#334155"),
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=-0.4,
-                    xanchor="center",
-                    x=0.5,
-                    bgcolor="rgba(255,255,255,0.8)",
-                ),
-                xaxis=dict(gridcolor="#e2e8f0"),
-                yaxis=dict(gridcolor="#e2e8f0"),
-            )
-            chart_placeholder.plotly_chart(fig, use_container_width=True, key=str(random.randint(0, 1e6)))
+            fig_1m = create_window_figure(df, 1, show_legend=False)
+            fig_5m = create_window_figure(df, 5, show_legend=False)
+            fig_10m = create_window_figure(df, 10, show_legend=True)
+
+            chart_1m_placeholder.plotly_chart(fig_1m, use_container_width=True, key=f"plot_1m_{random.randint(0, 1e6)}")
+            chart_5m_placeholder.plotly_chart(fig_5m, use_container_width=True, key=f"plot_5m_{random.randint(0, 1e6)}")
+            chart_10m_placeholder.plotly_chart(fig_10m, use_container_width=True, key=f"plot_10m_{random.randint(0, 1e6)}")
+            
             st.session_state.last_plot_time = current_t
 
-        cols_to_show = ["Elapsed (s)", "Timestamp", "Dominant Emotion", "Ground Truth", "Confidence (%)"] + EMOTIONS
+        cols_to_show = ["Elapsed (s)", "Timestamp", "Dominant Emotion", "Confidence (%)"] + EMOTIONS
         available_cols = [c for c in cols_to_show if c in df.columns]
         
-        edited_df = table_placeholder.data_editor(
+        table_placeholder.dataframe(
             df.tail(20)[available_cols],
-            use_container_width=True,
-            key="session_log_editor" + str(random.randint(0, 1e6)),
-            disabled=[c for c in available_cols if c != "Ground Truth"]
+            use_container_width=True
         )
-        
-        if edited_df is not None and not edited_df.empty:
-            for idx, row in edited_df.iterrows():
-                if idx < len(st.session_state.records):
-                    st.session_state.records[idx]["Ground Truth"] = row["Ground Truth"]
 
         csv_data = df.to_csv(index=False).encode("utf-8")
         download_placeholder.download_button(
-            label="📥 Download Results & Metrics (CSV)",
+            label="📥 Download Results (CSV)",
             data=csv_data,
             file_name=f"emotion_log_{session_date}.csv",
             mime="text/csv",
             key="csv_download_btn" + str(random.randint(0, 1e6))
         )
     else:
-        metrics_placeholder.info("Start recording to view model evaluation metrics.")
-        chart_placeholder.info("Click **Start** to begin capturing and logging data.")
-        dominant_summary_placeholder.empty()
+        chart_1m_placeholder.info("Click **Start** to begin capturing and logging data.")
+        chart_5m_placeholder.empty()
+        chart_10m_placeholder.empty()
         table_placeholder.caption("No records logged for this session yet.")
 
 
 render_dashboard_visuals(force_plot=True)
 
 # ---------------------------------------------------------
-# Live Tracking Loop (Detect every 1s)
+# Live Tracking Loop
 # ---------------------------------------------------------
 if st.session_state.tracking_active:
     cap = cv2.VideoCapture(int(camera_index), cv2.CAP_AVFOUNDATION)
@@ -402,7 +369,6 @@ if st.session_state.tracking_active:
                             "Elapsed (s)": elapsed_sec,
                             "Timestamp": timestamp_str,
                             "Dominant Emotion": pred_emotion,
-                            "Ground Truth": pred_emotion,
                             "Confidence (%)": round(confidence, 4),
                             "Image Path": img_path,
                         }
