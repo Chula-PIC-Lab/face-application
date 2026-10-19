@@ -32,10 +32,11 @@ To ensure full compatibility with **MediaPipe (`0.10.21`)** and other core libra
    # On macOS/Linux:
    source venv/bin/activate
 3. **Install requirements**
-    ```pip install -r requirements.txt```
+    ```bash
+    pip install -r requirements.txt
 
 ## 🚀 Running the Application
-    ```
+    ```bash
     streamlit run app.py
 
 Open the local URL provided in your terminal (usually http://localhost:8501) in your web browser to start using the application.
