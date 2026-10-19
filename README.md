@@ -36,6 +36,7 @@ To ensure full compatibility with **MediaPipe (`0.10.21`)** and other core libra
     pip install -r requirements.txt
 
 ## 🚀 Running the Application
+1. **Run streamlit**
     ```bash
     streamlit run app.py
 
