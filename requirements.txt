@@ -1,0 +1,9 @@
+streamlit
+opencv-python
+onnxruntime
+pillow
+huggingface_hub
+pandas
+plotly
+mediapipe==0.10.21
+scikit-learn
