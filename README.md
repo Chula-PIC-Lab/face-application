@@ -13,7 +13,7 @@ This application is designed to continuously monitor and evaluate human emotions
 
 ## 📋 Prerequisites & System Requirements
 
-To ensure full compatibility with **MediaPipe (`0.10.21`)** and other core libraries, you must use a Python version **strictly lower than 3.14**. 
+⚠️To ensure full compatibility with **MediaPipe (`0.10.21`)** and other core libraries, you must use a Python version **strictly lower than 3.14**. 
 
 * **Recommended Python Version:** Python **3.9, 3.10, 3.11, or 3.12**
 * **Webcam:** A working webcam connected to your device (Camera Index `0`).
