@@ -1,0 +1,6 @@
+freeze_backbone: true
+lr: 0.0001
+model_name: efficient_face
+num_classes: 7
+pretrained_checkpoint: checkpoint/model_best.pth.tar
+weight_decay: 0.0001

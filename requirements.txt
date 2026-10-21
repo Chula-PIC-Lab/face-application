@@ -7,3 +7,6 @@ pandas
 plotly
 mediapipe==0.10.21
 scikit-learn
+torch
+torchvision
+lightning
